@@ -3,6 +3,8 @@ use clap::{Parser, Subcommand};
 use client::S3Client;
 use reqwest::Client;
 
+use crate::client::S3Options;
+
 mod client;
 mod models;
 
@@ -12,6 +14,13 @@ lazy_static::lazy_static! {
 
 #[derive(Parser)]
 struct Cli {
+    #[arg(long)]
+    max_keys: Option<usize>,
+    #[arg(long)]
+    prefix: Option<String>,
+    #[arg(long)]
+    delimiter: Option<String>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -31,17 +40,24 @@ async fn main() {
 
 async fn async_main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let options = S3Options {
+        max_keys: cli.max_keys,
+        prefix: cli.prefix.clone(),
+        delimiter: cli.delimiter.clone(),
+    };
 
     match cli.command {
         Commands::ListFiles { url } => {
-            list_files(&url).await.context("list files command")?;
+            list_files(&url, options)
+                .await
+                .context("list files command")?;
         }
     }
 
     Ok(())
 }
 
-async fn list_files(url: &str) -> anyhow::Result<()> {
+async fn list_files(url: &str, options: S3Options) -> anyhow::Result<()> {
     let client = S3Client::default();
 
     let mut continuation_token = None;
@@ -49,7 +65,7 @@ async fn list_files(url: &str) -> anyhow::Result<()> {
     loop {
         eprintln!("downloading with token {continuation_token:?}");
         let resp = client
-            .fetch(url, continuation_token.as_deref())
+            .fetch(url, &options, continuation_token.as_deref())
             .await
             .context("fetch page")?;
         continuation_token = resp.next_continuation_token.clone();

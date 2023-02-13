@@ -8,6 +8,7 @@ use serde::{de::Visitor, Deserialize};
 #[serde(rename_all = "PascalCase")]
 pub struct ListObjectsV2Response {
     pub is_truncated: bool,
+    #[serde(default)]
     pub contents: Vec<Contents>,
     pub name: String,
     pub next_continuation_token: Option<String>,
